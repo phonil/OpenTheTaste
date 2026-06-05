@@ -5,9 +5,9 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.List;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import lombok.RequiredArgsConstructor;
 import com.ott.api_user.playlist.dto.request.PlaylistCondition;
 import com.ott.api_user.playlist.service.PlaylistPreferenceService;
@@ -29,7 +29,7 @@ public class TagPlaylistStrategy implements PlaylistStrategy {
     private final MediaRepository mediaRepository;
 
     @Override
-    public Page<Media> getPlaylist(PlaylistCondition condition, Pageable pageable) {
+    public Slice<Media> getPlaylist(PlaylistCondition condition, Pageable pageable) {
         Long targetTagId = condition.getTagId();
 
         // 홈화면인지 재생목록인지 구분함
@@ -70,9 +70,7 @@ public class TagPlaylistStrategy implements PlaylistStrategy {
         // 4. 프론트가 요구한 사이즈(예: 20개)만큼만 잘라서 Page 객체로 포장 후 반환
         int limit = Math.min(mediaPool.size(), pageable.getPageSize());
 
-        // 상세 페이지 무한 스크롤이 끊기지 않도록 total 값(세 번째 파라미터)을 더미 값(1000L) 으로 세팅
-        long totalCount = isHomeScreen ? mediaPool.size() : 1000L;
-
-        return new PageImpl<>(mediaPool.subList(0, limit), pageable, totalCount);
+        boolean hasNext = mediaPool.size() > limit;
+        return new SliceImpl<>(mediaPool.subList(0, limit), pageable, hasNext);
     }
 }

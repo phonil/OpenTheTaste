@@ -11,7 +11,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.ott.domain.common.Status.ACTIVE;
@@ -181,6 +183,47 @@ public class WatchHistoryRepositoryImpl implements WatchHistoryRepositoryCustom 
 
 
     
+    // [4-1] 시리즈 ID 목록 → 시리즈별 최근 시청 에피소드 Media ID 일괄 조회 (N+1 해결)
+    // 기존: 시리즈마다 개별 쿼리 N회 → 변경: IN절로 1회
+    @Override
+    public Map<Long, Long> findLatestContentMediaIdsByMemberIdAndSeriesMediaIds(Long memberId, List<Long> seriesMediaIdList) {
+        if (seriesMediaIdList.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        // 시리즈별 가장 최근 시청 시각을 서브쿼리로 구한 뒤, 해당 행의 contents.media.id를 가져옴
+        var subWh = new com.ott.domain.watch_history.domain.QWatchHistory("subWh");
+        var subContents = new com.ott.domain.contents.domain.QContents("subContents");
+
+        var resultList = queryFactory
+                .select(contents.series.media.id, contents.media.id)
+                .from(watchHistory)
+                .join(contents).on(watchHistory.contents.id.eq(contents.id))
+                .where(
+                        watchHistory.member.id.eq(memberId),
+                        contents.series.media.id.in(seriesMediaIdList),
+                        watchHistory.status.eq(Status.ACTIVE),
+                        watchHistory.lastWatchedAt.eq(
+                                com.querydsl.jpa.JPAExpressions
+                                        .select(subWh.lastWatchedAt.max())
+                                        .from(subWh)
+                                        .join(subContents).on(subWh.contents.id.eq(subContents.id))
+                                        .where(
+                                                subWh.member.id.eq(memberId),
+                                                subContents.series.media.id.eq(contents.series.media.id),
+                                                subWh.status.eq(Status.ACTIVE)
+                                        )
+                        )
+                )
+                .fetch();
+
+        Map<Long, Long> resultMap = new HashMap<>();
+        for (var tuple : resultList) {
+            resultMap.put(tuple.get(contents.series.media.id), tuple.get(contents.media.id));
+        }
+        return resultMap;
+    }
+
     @Override
     public List<WatchHistory> findRecentUnusedHistoriesWithin(Long memberId, LocalDateTime cutoff, int limit) {
         return queryFactory

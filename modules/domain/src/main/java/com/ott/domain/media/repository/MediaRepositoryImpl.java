@@ -14,6 +14,8 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.StringUtils;
 import static com.ott.domain.playback.domain.QPlayback.playback;
@@ -222,69 +224,42 @@ public class MediaRepositoryImpl implements MediaRepositoryCustom {
          */
 
         @Override
-        public Page<Media> findTrendingPlaylists(MediaType mediaType, Long excludeMediaId, Pageable pageable) {
+        public Slice<Media> findTrendingPlaylists(MediaType mediaType, Long excludeMediaId, Pageable pageable) {
                 List<Media> content = queryFactory
                                 .selectFrom(media)
-                                .where(         
-                                                mediaTypeEq(mediaType),
-                                                isActiveAndPublic(), // 활성 및 공개 상태 필터링
-                                                isDisplayable(), // 공통 노출 조건 사용
-                                                excludeId(excludeMediaId) // 현재 미디어 제외 (null이면 무시됨)
-                                )
-                                .orderBy(media.bookmarkCount.desc())
-                                .offset(pageable.getOffset())
-                                .limit(pageable.getPageSize())
-                                .fetch();
-
-                JPAQuery<Long> countQuery = queryFactory
-                                .select(media.count())
-                                .from(media)
-                                .where(         
+                                .where(
                                                 mediaTypeEq(mediaType),
                                                 isActiveAndPublic(),
                                                 isDisplayable(),
-                                                excludeId(excludeMediaId));
+                                                excludeId(excludeMediaId)
+                                )
+                                .orderBy(media.bookmarkCount.desc())
+                                .offset(pageable.getOffset())
+                                .limit(pageable.getPageSize() + 1)
+                                .fetch();
 
-                // PageableExecutionUtils를 사용하여 첫 페이지 조회 시 불필요한 카운트 쿼리 방지
-                return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+                boolean hasNext = content.size() > pageable.getPageSize();
+                if (hasNext) {
+                        content = content.subList(0, pageable.getPageSize());
+                }
+                return new SliceImpl<>(content, pageable, hasNext);
+
+                // [Before] COUNT 쿼리 — Page 반환용
+                // JPAQuery<Long> countQuery = queryFactory
+                //                 .select(media.count())
+                //                 .from(media)
+                //                 .where(
+                //                                 mediaTypeEq(mediaType),
+                //                                 isActiveAndPublic(),
+                //                                 isDisplayable(),
+                //                                 excludeId(excludeMediaId));
+                // return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
         }
 
         @Override
-        public Page<Media> findHistoryPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable) {
+        public Slice<Media> findHistoryPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable) {
                 List<Media> contentList = queryFactory
                         .select(media)
-                        .from(playback)
-                        // 1. 유저가 시청한 실제 영상(에피소드 or 단편) 조인
-                        .join(playback.contents, contents)
-                        // 2. 에피소드일 경우를 대비해 Series 레프트 조인
-                        .leftJoin(contents.series, series)
-                        
-                        // 3. 핵심 마법: 상황에 맞춰 알맞은 대표 Media를 물고 옵니다!
-                        .join(media).on(
-                                // 단편(영화)인 경우: 시청한 영상 자체의 Media를 조인
-                                series.isNull().and(media.id.eq(contents.media.id))
-                                // 에피소드인 경우: 부모인 Series가 가진 대표 Media를 조인
-                                .or(series.isNotNull().and(media.id.eq(series.media.id)))
-                        )
-                        
-                        .where(
-                                playback.member.id.eq(memberId),
-                                mediaTypeEq(mediaType),
-                                isActiveAndPublic(), 
-                                excludeId(excludeMediaId)
-                                // isDisplayable()은 위 조인 로직으로 인해 자연스럽게 충족되므로 뺐습니다!
-                        )
-                        
-                        // 4. 동일한 시리즈(드라마)의 여러 에피소드를 봤더라도 대표 썸네일 1개로 병합
-                        .groupBy(media.id)
-                        // 5. 묶인 에피소드들 중 가장 최근(Max)에 시청한 시간을 기준으로 내림차순 정렬
-                        .orderBy(playback.modifiedDate.max().desc() , media.id.desc())
-                        .offset(pageable.getOffset())
-                        .limit(pageable.getPageSize())
-                        .fetch();
-
-                JPAQuery<Long> countQuery = queryFactory
-                        .select(media.id.countDistinct()) // 페이징 개수 계산 시에도 중복 제거
                         .from(playback)
                         .join(playback.contents, contents)
                         .leftJoin(contents.series, series)
@@ -297,13 +272,40 @@ public class MediaRepositoryImpl implements MediaRepositoryCustom {
                                 mediaTypeEq(mediaType),
                                 isActiveAndPublic(),
                                 excludeId(excludeMediaId)
-                        );
+                        )
+                        .groupBy(media.id)
+                        .orderBy(playback.modifiedDate.max().desc() , media.id.desc())
+                        .offset(pageable.getOffset())
+                        .limit(pageable.getPageSize() + 1)
+                        .fetch();
 
-                return PageableExecutionUtils.getPage(contentList, pageable, countQuery::fetchOne);
+                boolean hasNext = contentList.size() > pageable.getPageSize();
+                if (hasNext) {
+                        contentList = contentList.subList(0, pageable.getPageSize());
+                }
+                return new SliceImpl<>(contentList, pageable, hasNext);
+
+                // [Before] COUNT 쿼리 — Page 반환용
+                // JPAQuery<Long> countQuery = queryFactory
+                //         .select(media.id.countDistinct())
+                //         .from(playback)
+                //         .join(playback.contents, contents)
+                //         .leftJoin(contents.series, series)
+                //         .join(media).on(
+                //                 series.isNull().and(media.id.eq(contents.media.id))
+                //                 .or(series.isNotNull().and(media.id.eq(series.media.id)))
+                //         )
+                //         .where(
+                //                 playback.member.id.eq(memberId),
+                //                 mediaTypeEq(mediaType),
+                //                 isActiveAndPublic(),
+                //                 excludeId(excludeMediaId)
+                //         );
+                // return PageableExecutionUtils.getPage(contentList, pageable, countQuery::fetchOne);
         }
 
         @Override
-        public Page<Media> findBookmarkedPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable) {
+        public Slice<Media> findBookmarkedPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable) {
                 List<Media> content = queryFactory
                                 .select(media)
                                 .from(bookmark)
@@ -315,46 +317,36 @@ public class MediaRepositoryImpl implements MediaRepositoryCustom {
                                                 isActiveAndPublic(),
                                                 isDisplayable(),
                                                 excludeId(excludeMediaId))
-                                .orderBy(bookmark.createdDate.desc()) // 최근 북마크한 순서
+                                .orderBy(bookmark.createdDate.desc())
                                 .offset(pageable.getOffset())
-                                .limit(pageable.getPageSize())
+                                .limit(pageable.getPageSize() + 1)
                                 .fetch();
 
-                JPAQuery<Long> countQuery = queryFactory
-                                .select(bookmark.count())
-                                .from(bookmark)
-                                .join(bookmark.media, media)
-                                .where(
-                                                bookmark.member.id.eq(memberId),
-                                                mediaTypeEq(mediaType),
-                                                bookmark.status.eq(Status.ACTIVE),
-                                                isActiveAndPublic(),
-                                                isDisplayable(),
-                                                excludeId(excludeMediaId));
+                boolean hasNext = content.size() > pageable.getPageSize();
+                if (hasNext) {
+                        content = content.subList(0, pageable.getPageSize());
+                }
+                return new SliceImpl<>(content, pageable, hasNext);
 
-                return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+                // [Before] COUNT 쿼리 — Page 반환용
+                // JPAQuery<Long> countQuery = queryFactory
+                //                 .select(bookmark.count())
+                //                 .from(bookmark)
+                //                 .join(bookmark.media, media)
+                //                 .where(
+                //                                 bookmark.member.id.eq(memberId),
+                //                                 mediaTypeEq(mediaType),
+                //                                 bookmark.status.eq(Status.ACTIVE),
+                //                                 isActiveAndPublic(),
+                //                                 isDisplayable(),
+                //                                 excludeId(excludeMediaId));
+                // return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
         }
 
         @Override
-        public Page<Media> findPlaylistsByTag(Long tagId, MediaType mediaType , Long excludeMediaId, Pageable pageable) {
+        public Slice<Media> findPlaylistsByTag(Long tagId, MediaType mediaType , Long excludeMediaId, Pageable pageable) {
                 List<Media> content = queryFactory
                                 .select(media)
-                                .from(mediaTag)
-                                .join(mediaTag.media, media)
-                                .where(
-                                                mediaTag.tag.id.eq(tagId), // 요청된 태그 ID 필터링
-                                                mediaTypeEq(mediaType),
-                                                isActiveAndPublic(), // 활성/공개 상태 확인
-                                                isDisplayable(),
-                                                excludeId(excludeMediaId) // 현재 재생 중인 영상 제외
-                                )
-                                .orderBy(media.createdDate.desc()) // 최신 등록 순 정렬
-                                .offset(pageable.getOffset())
-                                .limit(pageable.getPageSize())
-                                .fetch();
-
-                JPAQuery<Long> countQuery = queryFactory
-                                .select(mediaTag.count())
                                 .from(mediaTag)
                                 .join(mediaTag.media, media)
                                 .where(
@@ -362,9 +354,31 @@ public class MediaRepositoryImpl implements MediaRepositoryCustom {
                                                 mediaTypeEq(mediaType),
                                                 isActiveAndPublic(),
                                                 isDisplayable(),
-                                                excludeId(excludeMediaId));
+                                                excludeId(excludeMediaId)
+                                )
+                                .orderBy(media.createdDate.desc())
+                                .offset(pageable.getOffset())
+                                .limit(pageable.getPageSize() + 1)
+                                .fetch();
 
-                return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+                boolean hasNext = content.size() > pageable.getPageSize();
+                if (hasNext) {
+                        content = content.subList(0, pageable.getPageSize());
+                }
+                return new SliceImpl<>(content, pageable, hasNext);
+
+                // [Before] COUNT 쿼리 — Page 반환용
+                // JPAQuery<Long> countQuery = queryFactory
+                //                 .select(mediaTag.count())
+                //                 .from(mediaTag)
+                //                 .join(mediaTag.media, media)
+                //                 .where(
+                //                                 mediaTag.tag.id.eq(tagId),
+                //                                 mediaTypeEq(mediaType),
+                //                                 isActiveAndPublic(),
+                //                                 isDisplayable(),
+                //                                 excludeId(excludeMediaId));
+                // return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
         }
 
         // 특정 태그를 가진 영상 조회
@@ -519,15 +533,19 @@ public class MediaRepositoryImpl implements MediaRepositoryCustom {
                 return excludeMediaId != null ? media.id.ne(excludeMediaId) : null;
         }
 
+        // private BooleanExpression isDisplayable() {
+        //         return media.mediaType.eq(MediaType.SERIES)
+        //                 .or(media.mediaType.eq(MediaType.CONTENTS)
+        //                         .and(JPAExpressions.selectOne()
+        //                                 .from(contents)
+        //                                 .where(contents.media.id.eq(media.id)
+        //                                         .and(contents.series.isNotNull()))
+        //                                 .notExists()));
+        // }
+
         private BooleanExpression isDisplayable() {
-                return media.mediaType.eq(MediaType.SERIES)
-                        .or(media.mediaType.eq(MediaType.CONTENTS)
-                                .and(JPAExpressions.selectOne()
-                                        .from(contents)
-                                        .where(contents.media.id.eq(media.id)
-                                                .and(contents.series.isNotNull()))
-                                        .notExists()));
-       }
+                return media.isStandalone.isTrue();
+        }
 
         private BooleanExpression mediaStatusEq(MediaStatus mediaStatus) {
                 if (mediaStatus != null)

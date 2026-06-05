@@ -4,9 +4,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import com.ott.api_user.playlist.dto.request.PlaylistCondition;
@@ -24,7 +24,7 @@ public class RecommendPlaylistStrategy  implements PlaylistStrategy  {
     private final MediaRepository mediaRepository;
 
     @Override
-    public Page<Media> getPlaylist(PlaylistCondition condition, Pageable pageable) {
+    public Slice<Media> getPlaylist(PlaylistCondition condition, Pageable pageable) {
         
         boolean isHomeScreen = (condition.getExcludeMediaId() == null);
 
@@ -51,9 +51,8 @@ public class RecommendPlaylistStrategy  implements PlaylistStrategy  {
 
 
         int limit = Math.min(mediaPool.size(), pageable.getPageSize());
-        long totalCount = isHomeScreen ? mediaPool.size() : 1000L;
-
-        return new PageImpl<>(mediaPool.subList(0, limit), pageable, totalCount);
+        boolean hasNext = mediaPool.size() > limit;
+        return new SliceImpl<>(mediaPool.subList(0, limit), pageable, hasNext);
     }
     
 }

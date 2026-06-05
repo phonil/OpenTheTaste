@@ -7,6 +7,7 @@ import com.ott.domain.watch_history.domain.WatchHistory;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface WatchHistoryRepositoryCustom {
@@ -29,4 +30,7 @@ public interface WatchHistoryRepositoryCustom {
 
 
     Optional<Long> findLatestContentMediaIdByMemberIdAndSeriesMediaId(Long memberId, Long seriesMediaId);
-} 
+
+    // [4-1] 시리즈 ID 목록 → 시리즈별 최근 시청 에피소드 Media ID 일괄 조회 (N+1 해결)
+    Map<Long, Long> findLatestContentMediaIdsByMemberIdAndSeriesMediaIds(Long memberId, List<Long> seriesMediaIdList);
+}

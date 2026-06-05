@@ -60,3 +60,10 @@ CLAUDE.md
 GEMINI.md
 
 **/application-local.yml
+
+# Pinpoint Agent (binary, ~28MB)
+apps/monitoring/pinpoint/agent/
+
+# k6 부하 테스트 결과 및 토큰 데이터
+k6/results/
+k6/data/

@@ -1,7 +1,7 @@
 package com.ott.api_user.playlist.service.strategy;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import com.ott.api_user.playlist.dto.request.PlaylistCondition;
@@ -15,7 +15,7 @@ public class BookmarkPlaylistStrategy implements PlaylistStrategy {
     private final MediaRepository mediaRepository;
 
     @Override
-    public Page<Media> getPlaylist(PlaylistCondition condition, Pageable pageable) {
+    public Slice<Media> getPlaylist(PlaylistCondition condition, Pageable pageable) {
         
         return mediaRepository.findBookmarkedPlaylists(
             condition.getMemberId(), 

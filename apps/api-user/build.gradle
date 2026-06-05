@@ -25,6 +25,9 @@ dependencies {
 
 	// httpClient 5
 	implementation 'org.apache.httpcomponents.client5:httpclient5'
+
+	// p6spy - SQL 로깅 (개발/테스트 전용)
+	implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.2'
 }
 
 

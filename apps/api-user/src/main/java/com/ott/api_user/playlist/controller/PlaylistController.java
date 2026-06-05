@@ -11,7 +11,7 @@ import com.ott.api_user.playlist.dto.request.PlaylistCondition;
 import com.ott.api_user.playlist.dto.response.PlaylistResponse;
 import com.ott.api_user.playlist.dto.response.TopTagPlaylistResponse;
 import com.ott.api_user.playlist.service.PlaylistStrategyService;
-import com.ott.common.web.response.PageResponse;
+import com.ott.common.web.response.SliceResponse;
 import com.ott.common.web.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +27,7 @@ public class PlaylistController implements PlayListAPI {
 
     // 1. 종합 추천
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getRecommendPlaylists(
+    public ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getRecommendPlaylists(
             @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -66,7 +66,7 @@ public class PlaylistController implements PlayListAPI {
 
     // 3. 특정 태그 단건 리스트
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getTagPlaylists(
+    public ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getTagPlaylists(
             @PathVariable(value = "tagId") Long tagId,
             @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
@@ -83,7 +83,7 @@ public class PlaylistController implements PlayListAPI {
 
     // 4. 인기 차트
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getTrendingPlaylists(
+    public ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getTrendingPlaylists(
             @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -100,7 +100,7 @@ public class PlaylistController implements PlayListAPI {
 
     // 5. 시청 이력
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getHistoryPlaylists(
+    public ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getHistoryPlaylists(
             @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -115,7 +115,7 @@ public class PlaylistController implements PlayListAPI {
 
     // 6. 북마크
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getBookmarkPlaylists(
+    public ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getBookmarkPlaylists(
             @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -130,7 +130,7 @@ public class PlaylistController implements PlayListAPI {
 
     // 8. 검색 페이지에서 진입
     @Override
-    public ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getSearchPlaylists(
+    public ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getSearchPlaylists(
             @RequestParam(value = "excludeMediaId") Long excludeMediaId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -158,7 +158,7 @@ public class PlaylistController implements PlayListAPI {
     // // 과거 시청 이력 조회, 10개씩 조회
     // @Override
     // @GetMapping("/me/history")
-    // public ResponseEntity<SuccessResponse<PageResponse<RecentWatchResponse>>> getWatchHistoryPlaylist(
+    // public ResponseEntity<SuccessResponse<SliceResponse<RecentWatchResponse>>> getWatchHistoryPlaylist(
     //         @AuthenticationPrincipal Long memberId,
     //         @PositiveOrZero @RequestParam(defaultValue = "0") Integer page
     // ) {
@@ -168,7 +168,7 @@ public class PlaylistController implements PlayListAPI {
 
 
     // 공통 응답 메서드
-    private ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> execute(
+    private ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> execute(
             PlaylistCondition condition, Integer pageParam, Integer sizeParam, Long memberId) {
 
         if (memberId != null) {

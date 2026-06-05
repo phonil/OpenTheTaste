@@ -32,4 +32,5 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
       """)
     void softDeleteByMemberId(@Param("memberId") Long memberId);
 
+    Optional<Member> findByEmail(String email);
 }

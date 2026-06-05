@@ -5,7 +5,7 @@ import com.ott.api_user.playlist.dto.response.RecentWatchResponse;
 import com.ott.api_user.playlist.dto.response.TagPlaylistResponse;
 import com.ott.api_user.playlist.dto.response.TopTagPlaylistResponse;
 import com.ott.common.web.exception.ErrorResponse;
-import com.ott.common.web.response.PageResponse;
+import com.ott.common.web.response.SliceResponse;
 import com.ott.common.web.response.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,7 +33,7 @@ import java.util.List;
 @Tag(name = "Playlist", description = "플레이리스트& 재생목록 API, excludeMediaId 는 재생목록 API 호출 시에만 포함시킵니다")
 @ApiResponses(value = {
     @ApiResponse(responseCode = "200", description = "조회 성공", 
-        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageResponse.class))),
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SliceResponse.class))),
     @ApiResponse(responseCode = "401", description = "인증 실패", 
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
     @ApiResponse(responseCode = "400", description = "요청 파라미터 오류", 
@@ -44,7 +44,7 @@ public interface PlayListAPI {
         @ApiResponse(responseCode = "0", description = "플레이리스트 DTO 응답 구조", 
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = PlaylistResponse.class)))
         @GetMapping("/recommend")
-        ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getRecommendPlaylists(
+        ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getRecommendPlaylists(
                 @Parameter(description = "현재 영상 ID") @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
                 @PositiveOrZero @Parameter(description = "페이지 번호(0부터 시작)", example = "0") @RequestParam(value = "page", defaultValue = "0") Integer page,
                 @Positive @Parameter(description = "페이지 크기") @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -76,7 +76,7 @@ public interface PlayListAPI {
         @ApiResponse(responseCode = "404", description = "해당 태그를 찾을 수 없음", 
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
         @GetMapping("/tags/{tagId}")
-        ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getTagPlaylists(
+        ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getTagPlaylists(
                 @Parameter(description = "태그 ID", required = true) @PathVariable(value = "tagId") Long tagId,
                 @Parameter(description = "현재 영상 ID") @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
                 @PositiveOrZero @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") Integer page,
@@ -88,7 +88,7 @@ public interface PlayListAPI {
         @ApiResponse(responseCode = "0", description = "플레이리스트 DTO 응답 구조", 
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = PlaylistResponse.class)))
         @GetMapping("/trending")
-        ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getTrendingPlaylists(
+        ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getTrendingPlaylists(
                 @Parameter(description = "현재 영상 ID") @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
                 @PositiveOrZero @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") Integer page,
                 @Positive @Parameter(description = "페이지 크기") @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -99,7 +99,7 @@ public interface PlayListAPI {
         @ApiResponse(responseCode = "0", description = "플레이리스트 DTO 응답 구조", 
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = PlaylistResponse.class)))
         @GetMapping("/history")
-        ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getHistoryPlaylists(
+        ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getHistoryPlaylists(
                 @Parameter(description = "현재 영상 ID") @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
                 @PositiveOrZero @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") Integer page,
                 @Positive @Parameter(description = "페이지 크기") @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -110,7 +110,7 @@ public interface PlayListAPI {
         @ApiResponse(responseCode = "0", description = "플레이리스트 DTO 응답 구조", 
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = PlaylistResponse.class)))
         @GetMapping("/bookmarks")
-        ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getBookmarkPlaylists(
+        ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getBookmarkPlaylists(
                 @Parameter(description = "현재 영상 ID") @RequestParam(value = "excludeMediaId", required = false) Long excludeMediaId,
                 @PositiveOrZero @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") Integer page,
                 @Positive @Parameter(description = "페이지 크기") @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -121,7 +121,7 @@ public interface PlayListAPI {
         @ApiResponse(responseCode = "0", description = "플레이리스트 DTO 응답 구조", 
                 content = @Content(mediaType = "application/json", schema = @Schema(implementation = PlaylistResponse.class)))
         @GetMapping("/search")
-        ResponseEntity<SuccessResponse<PageResponse<PlaylistResponse>>> getSearchPlaylists(
+        ResponseEntity<SuccessResponse<SliceResponse<PlaylistResponse>>> getSearchPlaylists(
                 @Parameter(description = "현재 영상 ID", required = true) @RequestParam(value = "excludeMediaId") Long excludeMediaId,
                 @PositiveOrZero @Parameter(description = "페이지 번호") @RequestParam(value = "page", defaultValue = "0") Integer page,
                 @Positive @Parameter(description = "페이지 크기") @RequestParam(value = "size", defaultValue = "20") Integer size,
@@ -170,7 +170,7 @@ public interface PlayListAPI {
         //     @ApiResponses({
         //             @ApiResponse(
         //                     responseCode = "200", description = "조회 성공",
-        //                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageResponse.class))),
+        //                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = SliceResponse.class))),
         //             @ApiResponse(
         //                     responseCode = "401", description = "인증 실패",
         //                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -179,7 +179,7 @@ public interface PlayListAPI {
         //                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
         //     })
         //     @GetMapping("/me/history")
-        //     ResponseEntity<SuccessResponse<PageResponse<RecentWatchResponse>>> getWatchHistoryPlaylist(
+        //     ResponseEntity<SuccessResponse<SliceResponse<RecentWatchResponse>>> getWatchHistoryPlaylist(
         //             @AuthenticationPrincipal Long memberId,
         //             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
         //             @PositiveOrZero @RequestParam(defaultValue = "0") Integer page

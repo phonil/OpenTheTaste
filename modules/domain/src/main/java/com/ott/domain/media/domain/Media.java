@@ -67,6 +67,9 @@ public class Media extends BaseEntity {
     @Column(name = "media_status", nullable = false)
     private MediaStatus mediaStatus;
 
+    @Column(name = "is_standalone", nullable = false)
+    private Boolean isStandalone;
+
     public void updateMediaStatus(MediaStatus mediaStatus) {
         this.mediaStatus = mediaStatus;
     }

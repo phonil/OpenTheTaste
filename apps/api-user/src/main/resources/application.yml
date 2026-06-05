@@ -70,8 +70,8 @@ management:
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET_BASE64:}
-  access-token-expiry: 1800000       # 30분
-  refresh-token-expiry: 1209600000   # 14일
+  access-token-expiry: 1209600000       # 30분: 1800000
+  refresh-token-expiry: 1209600000   # 14일: 1209600000
 
 springdoc:
   api-docs:
@@ -89,8 +89,14 @@ ai:
   timeout:
     mood-ms: ${AI_TIMEOUT_MOOD_MS:30000} # 기본 30초
 
-
 gemini:
   api:
     url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
     key: ${GEMINI_API_KEY}
+
+# p6spy SQL 로깅 (개발/테스트 전용)
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      logging: slf4j

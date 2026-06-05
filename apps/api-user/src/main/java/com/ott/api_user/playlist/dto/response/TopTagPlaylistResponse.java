@@ -1,6 +1,6 @@
 package com.ott.api_user.playlist.dto.response;
 
-import com.ott.common.web.response.PageResponse;
+import com.ott.common.web.response.SliceResponse;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -22,7 +22,7 @@ public class TopTagPlaylistResponse {
     private TagInfo tag;
 
     @Schema(description = "해당 태그의 미디어 목록")
-    private PageResponse<PlaylistResponse> medias;
+    private SliceResponse<PlaylistResponse> medias;
 
     @Getter
     @Builder

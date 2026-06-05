@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 
 public interface MediaRepositoryCustom {
@@ -29,16 +30,16 @@ public interface MediaRepositoryCustom {
         List<Media> findMediasByTagId(Long tagId,Long excludeMediaId, int limit , long offset);
 
        // 인기 차트 통합 조회 메서드
-        Page<Media> findTrendingPlaylists(MediaType mediaType, Long excludeMediaId, Pageable pageable);
+        Slice<Media> findTrendingPlaylists(MediaType mediaType, Long excludeMediaId, Pageable pageable);
 
         // 시청 이력 조회 (최근 시청 순)
-        Page<Media> findHistoryPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable);
+        Slice<Media> findHistoryPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable);
 
         // 북마크 목록 조회 (최근 찜한 순)
-        Page<Media> findBookmarkedPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable);
+        Slice<Media> findBookmarkedPlaylists(Long memberId, MediaType mediaType, Long excludeMediaId, Pageable pageable);
 
         // 특정 태그 기반 미디어 목록 조회 (페이징 객체 사용)
-        Page<Media> findPlaylistsByTag(Long tagId, MediaType mediaType, Long excludeMediaId, Pageable pageable);
+        Slice<Media> findPlaylistsByTag(Long tagId, MediaType mediaType, Long excludeMediaId, Pageable pageable);
 
         // 특정 태그 기반 미디어 목록 조회 (limit, offset 사용)
         List<Media> findMediasByTagId(Long tagId, MediaType mediaType, Long excludeMediaId, int limit , long offset);

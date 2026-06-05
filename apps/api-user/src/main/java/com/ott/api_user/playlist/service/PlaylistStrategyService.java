@@ -7,8 +7,8 @@ import com.ott.api_user.playlist.dto.response.TopTagPlaylistResponse;
 import com.ott.api_user.playlist.service.strategy.PlaylistStrategy;
 import com.ott.common.web.exception.BusinessException;
 import com.ott.common.web.exception.ErrorCode;
-import com.ott.common.web.response.PageInfo;
-import com.ott.common.web.response.PageResponse;
+import com.ott.common.web.response.SliceInfo;
+import com.ott.common.web.response.SliceResponse;
 import com.ott.domain.common.MediaType;
 import com.ott.domain.media.domain.MediaStatus;
 import com.ott.domain.common.PublicStatus;
@@ -22,6 +22,7 @@ import com.ott.domain.watch_history.repository.WatchHistoryRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,27 +45,57 @@ public class PlaylistStrategyService {
     private final ContentsRepository contentsRepository;
     private final PlaybackRepository playbackRepository;
 
-    public PageResponse<PlaylistResponse> getPlaylists(PlaylistCondition condition, Pageable pageable) {
-        
+    public SliceResponse<PlaylistResponse> getPlaylists(PlaylistCondition condition, Pageable pageable) {
+
         if (condition.getContentSource() == null) {
-             throw new BusinessException(ErrorCode.INVALID_PLAYLIST_SOURCE); 
+             throw new BusinessException(ErrorCode.INVALID_PLAYLIST_SOURCE);
         }
 
         // 1. 전략 선택 및 1차 데이터 조회
         PlaylistStrategy strategy = getStrategy(condition);
-        Page<Media> mediaPage = strategy.getPlaylist(condition, pageable);
+        Slice<Media> mediaPage = strategy.getPlaylist(condition, pageable);
         Long memberId = condition.getMemberId();
 
-        Map<Long, Long> mediaToTargetIdMap = new HashMap<>();
+        // [Before] N+1 개별 조회 (시리즈 20개 기준 최대 60회 쿼리)
+        // Map<Long, Long> mediaToTargetIdMap = new HashMap<>();
+        // for (Media media : mediaPage.getContent()) {
+        //     if (media.getMediaType() == MediaType.SERIES) {
+        //         Long targetId = watchHistoryRepository.findLatestContentMediaIdByMemberIdAndSeriesMediaId(memberId, media.getId())
+        //                 .orElseGet(() -> getFirstEpisodeMediaId(media.getId()));
+        //         mediaToTargetIdMap.put(media.getId(), targetId);
+        //     } else {
+        //         mediaToTargetIdMap.put(media.getId(), media.getId());
+        //     }
+        // }
 
+        // [After] IN절 일괄 조회 (최대 2회 쿼리)
+        // 1) 시리즈 ID 목록 추출
+        List<Long> seriesMediaIdList = mediaPage.getContent().stream()
+                .filter(m -> m.getMediaType() == MediaType.SERIES)
+                .map(Media::getId)
+                .toList();
+
+        // 2) 시리즈별 최근 시청 에피소드 일괄 조회 (1회)
+        Map<Long, Long> latestEpisodeMap = seriesMediaIdList.isEmpty()
+                ? new HashMap<>()
+                : watchHistoryRepository.findLatestContentMediaIdsByMemberIdAndSeriesMediaIds(memberId, seriesMediaIdList);
+
+        // 3) 시청 이력 없는 시리즈 → 1화 fallback 일괄 조회 (1회)
+        List<Long> noHistorySeriesIdList = seriesMediaIdList.stream()
+                .filter(id -> !latestEpisodeMap.containsKey(id))
+                .toList();
+        Map<Long, Long> firstEpisodeMap = noHistorySeriesIdList.isEmpty()
+                ? new HashMap<>()
+                : contentsRepository.findFirstEpisodeMediaIdsBySeriesMediaIds(noHistorySeriesIdList);
+
+        // 4) 맵 병합
+        Map<Long, Long> mediaToTargetIdMap = new HashMap<>();
         for (Media media : mediaPage.getContent()) {
             if (media.getMediaType() == MediaType.SERIES) {
-                Long targetId = watchHistoryRepository.findLatestContentMediaIdByMemberIdAndSeriesMediaId(memberId, media.getId())
-                        //시청 이력이 없다면 첫번째화 가져오기
-                        .orElseGet(() -> getFirstEpisodeMediaId(media.getId()));
+                Long targetId = latestEpisodeMap.getOrDefault(media.getId(),
+                        firstEpisodeMap.get(media.getId()));
                 mediaToTargetIdMap.put(media.getId(), targetId);
             } else {
-                // 단편 콘텐츠일때
                 mediaToTargetIdMap.put(media.getId(), media.getId());
             }
         }
@@ -107,14 +138,14 @@ public class PlaylistStrategyService {
                 .toList();
 
 
-        // 4. PageInfo 생성 
-        PageInfo pageInfo = PageInfo.toPageInfo(
-                mediaPage.getNumber(), 
-                mediaPage.getTotalPages(), 
-                (int) mediaPage.getTotalElements()
-        );
+        // 4. SliceInfo 생성
+        SliceInfo sliceInfo = SliceInfo.builder()
+                .currentPage(mediaPage.getNumber())
+                .pageSize(mediaPage.getSize())
+                .hasNext(mediaPage.hasNext())
+                .build();
 
-        return PageResponse.toPageResponse(pageInfo, contentList);
+        return SliceResponse.toSliceResponse(sliceInfo, contentList);
     }
 
 
@@ -148,13 +179,13 @@ public class PlaylistStrategyService {
         }
 
         // 상위태그가 조립된 상태로 플레이리스트 조회
-        PageResponse<PlaylistResponse> mediaPage = getPlaylists(condition, pageable);
+        SliceResponse<PlaylistResponse> mediaPage = getPlaylists(condition, pageable);
 
 
         return TopTagPlaylistResponse.builder()
                     .category(categoryInfo)
                     .tag(tagInfo)
-                    .medias(mediaPage) // 위에서 가져온 PageResponse를 그대로 넣음
+                    .medias(mediaPage)
                     .build();
     }
 
@@ -188,18 +219,16 @@ public class PlaylistStrategyService {
     }
 
 
-    // 시리즈 1화의 MediaId를 가져오는 헬퍼 메서드
-    private Long getFirstEpisodeMediaId(Long seriesId) {
-        Pageable limitOne = PageRequest.of(0, 1);
-        Page<Contents> firstContentPage = contentsRepository
-                .findBySeries_Media_IdAndStatusAndMedia_PublicStatusAndMedia_MediaStatusOrderByIdAsc(seriesId, Status.ACTIVE, PublicStatus.PUBLIC, MediaStatus.COMPLETED, limitOne);
-
-        if (firstContentPage.isEmpty()) {
-            // 시리즈 껍데기만 있고 콘텐츠가 아직 안 올라온 예외 상황 방어
-            return null; 
-        }
-        return firstContentPage.getContent().get(0).getMedia().getId();
-    }
+    // [Before] 시리즈 1화의 MediaId를 가져오는 헬퍼 메서드 (N+1 원인 - Page 반환으로 COUNT 쿼리까지 발생)
+    // private Long getFirstEpisodeMediaId(Long seriesId) {
+    //     Pageable limitOne = PageRequest.of(0, 1);
+    //     Page<Contents> firstContentPage = contentsRepository
+    //             .findBySeries_Media_IdAndStatusAndMedia_PublicStatusAndMedia_MediaStatusOrderByIdAsc(seriesId, Status.ACTIVE, PublicStatus.PUBLIC, MediaStatus.COMPLETED, limitOne);
+    //     if (firstContentPage.isEmpty()) {
+    //         return null;
+    //     }
+    //     return firstContentPage.getContent().get(0).getMedia().getId();
+    // }
 
 
 }
