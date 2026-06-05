@@ -17,8 +17,8 @@ import com.ott.api_user.playlist.dto.response.TopTagPlaylistResponse;
 import com.ott.api_user.playlist.service.strategy.PlaylistStrategy;
 import com.ott.common.web.exception.BusinessException;
 import com.ott.common.web.exception.ErrorCode;
-import com.ott.common.web.response.PageInfo;
-import com.ott.common.web.response.PageResponse;
+import com.ott.common.web.response.SliceInfo;
+import com.ott.common.web.response.SliceResponse;
 import com.ott.domain.category.domain.Category;
 import com.ott.domain.common.MediaType;
 import com.ott.domain.common.PublicStatus;
@@ -37,7 +37,6 @@ import com.ott.domain.tag.domain.Tag;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -99,8 +98,8 @@ class PlaylistStrategyServiceTest {
 
         when(strategyMap.get(ContentSource.RECOMMEND.name())).thenReturn(recommendStrategy);
         when(recommendStrategy.getPlaylist(condition, pageable)).thenReturn(page);
-        when(watchHistoryRepository.findLatestContentMediaIdByMemberIdAndSeriesMediaId(condition.getMemberId(), seriesMedia.getId()))
-                .thenReturn(Optional.of(20L));
+        when(watchHistoryRepository.findLatestContentMediaIdsByMemberIdAndSeriesMediaIds(condition.getMemberId(), List.of(seriesMedia.getId())))
+                .thenReturn(Map.of(seriesMedia.getId(), 20L));
 
         Contents targetContents = createContents(20L, 333);
         when(contentsRepository.findAllByMediaIdIn(List.of(20L))).thenReturn(List.of(targetContents));
@@ -109,7 +108,7 @@ class PlaylistStrategyServiceTest {
         when(playbackRepository.findAllByMemberIdAndMediaIds(condition.getMemberId(), List.of(20L)))
                 .thenReturn(List.of(createPlayback(playbackMember, targetContents, 123)));
 
-        PageResponse<PlaylistResponse> result = playlistStrategyService.getPlaylists(condition, pageable);
+        SliceResponse<PlaylistResponse> result = playlistStrategyService.getPlaylists(condition, pageable);
         PlaylistResponse response = result.getDataList().get(0);
 
         assertThat(response.getDuration()).isEqualTo(333);
@@ -126,12 +125,12 @@ class PlaylistStrategyServiceTest {
         Media seriesMedia = createMedia(11L, MediaType.SERIES);
         when(strategyMap.get(ContentSource.TRENDING.name())).thenReturn(recommendStrategy);
         when(recommendStrategy.getPlaylist(condition, pageable)).thenReturn(new PageImpl<>(List.of(seriesMedia), pageable, 1));
-        when(watchHistoryRepository.findLatestContentMediaIdByMemberIdAndSeriesMediaId(condition.getMemberId(), seriesMedia.getId()))
-                .thenReturn(Optional.empty());
-        when(contentsRepository.findBySeries_Media_IdAndStatusAndMedia_PublicStatusOrderByIdAsc(eq(seriesMedia.getId()), eq(Status.ACTIVE), eq(PublicStatus.PUBLIC), any(Pageable.class)))
-                .thenReturn(Page.empty());
+        when(watchHistoryRepository.findLatestContentMediaIdsByMemberIdAndSeriesMediaIds(condition.getMemberId(), List.of(seriesMedia.getId())))
+                .thenReturn(Map.of());
+        when(contentsRepository.findFirstEpisodeMediaIdsBySeriesMediaIds(List.of(seriesMedia.getId())))
+                .thenReturn(Map.of());
 
-        PageResponse<PlaylistResponse> result = playlistStrategyService.getPlaylists(condition, pageable);
+        SliceResponse<PlaylistResponse> result = playlistStrategyService.getPlaylists(condition, pageable);
         PlaylistResponse response = result.getDataList().get(0);
 
         assertThat(response.getDuration()).isZero();
@@ -152,8 +151,8 @@ class PlaylistStrategyServiceTest {
 
         when(preferenceService.getTopTags(condition.getMemberId())).thenReturn(List.of(tag));
 
-        PageResponse<PlaylistResponse> fakePage = PageResponse.toPageResponse(
-                PageInfo.toPageInfo(0, 1, 1),
+        SliceResponse<PlaylistResponse> fakePage = SliceResponse.toSliceResponse(
+                SliceInfo.builder().currentPage(0).pageSize(5).hasNext(false).build(),
                 Collections.emptyList()
         );
 

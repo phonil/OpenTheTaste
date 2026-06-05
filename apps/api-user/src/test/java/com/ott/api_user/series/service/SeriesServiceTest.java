@@ -88,7 +88,7 @@ class SeriesServiceTest {
 
         // Return a page that contains those episodes
         // 시리즈에 속한 콘텐츠만 필터링해서 반환되도록 콘텐츠 레포지토리 응답을 준비
-        when(contentsRepository.findBySeriesIdAndStatusAndMedia_PublicStatusOrderByIdAsc(series.getId(), Status.ACTIVE, PublicStatus.PUBLIC, pageable))
+        when(contentsRepository.findBySeriesIdAndStatusAndMedia_PublicStatusAndMedia_MediaStatusOrderByIdAsc(series.getId(), Status.ACTIVE, PublicStatus.PUBLIC, MediaStatus.COMPLETED, pageable))
                 .thenReturn(new PageImpl<>(List.of(ep1, ep2), pageable, 2));
 
         // 재생 기록을 다운스트림으로 매핑하여 DTO에 positionSec이 채워지는지 확인
@@ -111,14 +111,14 @@ class SeriesServiceTest {
         assertThat(second.getPositionSec()).isEqualTo(60);
 
         // ContentsRepository에 Status/공개 상태 조건으로 호출되었는지 확인
-        verify(contentsRepository).findBySeriesIdAndStatusAndMedia_PublicStatusOrderByIdAsc(eq(series.getId()), eq(Status.ACTIVE), eq(PublicStatus.PUBLIC), any(Pageable.class));
+        verify(contentsRepository).findBySeriesIdAndStatusAndMedia_PublicStatusAndMedia_MediaStatusOrderByIdAsc(eq(series.getId()), eq(Status.ACTIVE), eq(PublicStatus.PUBLIC), eq(MediaStatus.COMPLETED), any(Pageable.class));
     }
 
     @Test
     void getFirstEpisodeMediaId_throwsWhenNoEpisodesRegistered() {
         Long seriesId = 300L;
         Pageable limitOne = PageRequest.of(0, 1);
-        when(contentsRepository.findBySeriesIdAndStatusAndMedia_PublicStatusOrderByIdAsc(seriesId, Status.ACTIVE, PublicStatus.PUBLIC, limitOne))
+        when(contentsRepository.findBySeriesIdAndStatusAndMedia_PublicStatusAndMedia_MediaStatusOrderByIdAsc(seriesId, Status.ACTIVE, PublicStatus.PUBLIC, MediaStatus.COMPLETED, limitOne))
                 .thenReturn(Page.empty(limitOne));
 
         // 1화가 없을 때 private helper가 EPISODE_NOT_REGISTERED 예외를 던지는지 검사
@@ -132,7 +132,7 @@ class SeriesServiceTest {
         Long seriesId = 400L;
         Pageable limitOne = PageRequest.of(0, 1);
         Contents episode = createContents(401L, createSeries(seriesId + 1, 10L), 180);
-        when(contentsRepository.findBySeriesIdAndStatusAndMedia_PublicStatusOrderByIdAsc(seriesId, Status.ACTIVE, PublicStatus.PUBLIC, limitOne))
+        when(contentsRepository.findBySeriesIdAndStatusAndMedia_PublicStatusAndMedia_MediaStatusOrderByIdAsc(seriesId, Status.ACTIVE, PublicStatus.PUBLIC, MediaStatus.COMPLETED, limitOne))
                 .thenReturn(new PageImpl<>(List.of(episode), limitOne, 1));
 
         // 1화가 존재하면 실제 mediaId를 반환하는지 확인

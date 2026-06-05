@@ -2,13 +2,14 @@ package com.ott.api_user.playback.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ott.api_user.playback.dto.request.PlaybackInitRequest;
 import com.ott.api_user.playback.dto.request.PlaybackUpdateRequest;
 import com.ott.api_user.playback.service.PlaybackService;
-import com.ott.common.web.response.SuccessResponse;
 import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +21,20 @@ public class PlayBackController implements PlayBackApi {
     private final PlaybackService playbackService;
 
     @Override
-    @PutMapping
-    public ResponseEntity<Void> upsertPlayBack(
+    @PostMapping
+    public ResponseEntity<Void> initPlayback(
         @AuthenticationPrincipal Long memberId,
-        @Valid @RequestBody PlaybackUpdateRequest request){
+        @Valid @RequestBody PlaybackInitRequest playbackInitRequest) {
+            playbackService.initPlayback(memberId, playbackInitRequest);
+            return ResponseEntity.noContent().build();
+    }
 
-            playbackService.upsertPlayback(memberId, request.getMediaId(), request.getPositionSec());
-
+    @Override
+    @PutMapping
+    public ResponseEntity<Void> updatePlayBack(
+        @AuthenticationPrincipal Long memberId,
+        @Valid @RequestBody PlaybackUpdateRequest playbackUpdateRequest){
+            playbackService.updatePlayback(memberId, playbackUpdateRequest);
             return ResponseEntity.noContent().build();
     }
 }

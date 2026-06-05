@@ -18,8 +18,8 @@ import com.ott.api_user.playlist.dto.request.PlaylistCondition;
 import com.ott.api_user.playlist.dto.response.PlaylistResponse;
 import com.ott.api_user.playlist.dto.response.TopTagPlaylistResponse;
 import com.ott.api_user.playlist.service.PlaylistStrategyService;
-import com.ott.common.web.response.PageInfo;
-import com.ott.common.web.response.PageResponse;
+import com.ott.common.web.response.SliceInfo;
+import com.ott.common.web.response.SliceResponse;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,13 +77,13 @@ class PlaylistControllerTest {
                 .positionSec(10)
                 .build();
 
-        PageResponse<PlaylistResponse> pageResponse = PageResponse.toPageResponse(
-                PageInfo.builder().currentPage(2).pageSize(4).build(),
+        SliceResponse<PlaylistResponse> sliceResponse = SliceResponse.toSliceResponse(
+                SliceInfo.builder().currentPage(2).pageSize(4).hasNext(false).build(),
                 List.of(playlist)
         );
 
         when(playlistStrategyService.getPlaylists(any(PlaylistCondition.class), any(Pageable.class)))
-                .thenReturn(pageResponse);
+                .thenReturn(sliceResponse);
 
         mockMvc.perform(get("/playlists/recommend")
                         .principal(new UsernamePasswordAuthenticationToken(memberId, "x"))
@@ -91,7 +91,7 @@ class PlaylistControllerTest {
                         .param("size", "4")
                         .param("excludeMediaId", "123"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.pageInfo.pageSize").value(4));
+                .andExpect(jsonPath("$.data.sliceInfo.pageSize").value(4));
 
         ArgumentCaptor<PlaylistCondition> conditionCaptor = ArgumentCaptor.forClass(PlaylistCondition.class);
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
@@ -111,8 +111,8 @@ class PlaylistControllerTest {
     void getTopTagPlaylists_returnsTopTagResponse() throws Exception {
         Long memberId = 88L;
 
-        PageResponse<PlaylistResponse> playlists = PageResponse.toPageResponse(
-                PageInfo.builder().currentPage(0).pageSize(1).build(),
+        SliceResponse<PlaylistResponse> playlists = SliceResponse.toSliceResponse(
+                SliceInfo.builder().currentPage(0).pageSize(1).hasNext(false).build(),
                 List.of(PlaylistResponse.builder().mediaId(1L).title("movie").posterUrl("p").thumbnailUrl("t").mediaType(null).duration(60).positionSec(0).build())
         );
 

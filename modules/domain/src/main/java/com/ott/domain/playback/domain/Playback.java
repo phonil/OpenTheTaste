@@ -3,6 +3,8 @@ package com.ott.domain.playback.domain;
 import com.ott.domain.common.BaseEntity;
 import com.ott.domain.contents.domain.Contents;
 import com.ott.domain.member.domain.Member;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -49,4 +51,7 @@ public class Playback extends BaseEntity {
 
     @Column(name = "position_sec", nullable = false)
     private Integer positionSec;
+
+    @Column(name = "event_time", nullable = false)
+    private LocalDateTime eventTime;
 }

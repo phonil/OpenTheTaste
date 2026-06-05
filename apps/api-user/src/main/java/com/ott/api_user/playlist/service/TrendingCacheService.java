@@ -29,7 +29,7 @@ public class TrendingCacheService {
     private final MediaRepository mediaRepository;
     private final ContentsRepository contentsRepository;
 
-    @Cacheable(value = "trending", key = "#page + ':' + #size")
+    @Cacheable(value = "trending", key = "#page + ':' + #size", cacheManager = "redisCacheManager")
     public SliceResponse<PlaylistResponse> getTrending(int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size);

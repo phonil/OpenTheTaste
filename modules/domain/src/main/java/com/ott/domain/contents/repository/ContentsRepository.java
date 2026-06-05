@@ -50,7 +50,30 @@ public interface ContentsRepository extends JpaRepository<Contents, Long>, Conte
                 @Param("status") Status status,
                 @Param("publicStatus") PublicStatus publicStatus);
 
+        @Query("""
+                SELECT c.id
+                FROM Contents c
+                JOIN c.media m
+                WHERE m.id = :mediaId
+                AND c.status = com.ott.domain.common.Status.ACTIVE
+                AND m.publicStatus = com.ott.domain.common.PublicStatus.PUBLIC
+                AND m.mediaStatus = com.ott.domain.media.domain.MediaStatus.COMPLETED
+                """)
+        Optional<Long> findPlayableContentsIdByMediaId(@Param("mediaId") Long mediaId);
 
-                
-        boolean existsByIdAndStatus(Long id, Status status);
+        /**
+         * @deprecated Playback buffering 구조에서는 앞단 캐시 검증 후 contentsId 기반 upsert를 사용한다.
+         *             신규 경로는 findPlayableContentsIdByMediaId(Long)를 사용한다.
+         */
+        @Deprecated
+        @Query("""
+                SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END
+                FROM Contents c
+                JOIN c.media m
+                WHERE m.id = :mediaId
+                AND c.status = com.ott.domain.common.Status.ACTIVE
+                AND m.publicStatus = com.ott.domain.common.PublicStatus.PUBLIC
+                AND m.mediaStatus = com.ott.domain.media.domain.MediaStatus.COMPLETED
+                """)
+        boolean existsPlayableByMediaId(@Param("mediaId") Long mediaId);
 }

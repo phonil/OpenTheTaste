@@ -55,7 +55,6 @@ pnpm-lock.yaml
 modules/infra/src/main/resources/db/seed/
 
 private_docs/
-AGENTS.md
 CLAUDE.md
 GEMINI.md
 
@@ -64,6 +63,13 @@ GEMINI.md
 # Pinpoint Agent (binary, ~28MB)
 apps/monitoring/pinpoint/agent/
 
+# k6 스크립트
+/k6
+
 # k6 부하 테스트 결과 및 토큰 데이터
-k6/results/
-k6/data/
+#k6/results/
+#k6/data/
+
+# 개인 구현 문서
+/docs/improvements/message
+/docs/improvements/playback

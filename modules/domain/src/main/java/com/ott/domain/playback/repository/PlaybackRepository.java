@@ -58,7 +58,11 @@ public interface PlaybackRepository extends JpaRepository<Playback, Long>, Playb
                 @Param("mediaId") Long mediaId);
         
         
-        // mysql 전용 문법 사용
+        /**
+         * @deprecated Playback start/update 분리 구조에서는 init 시 insertIgnorePlayback(Long, Long),
+         *             progress 갱신 시 updatePlayback(Long, Long, int)를 사용한다.
+         */
+        @Deprecated
         @Modifying
         @Query(value = """
                 INSERT INTO playback (member_id, contents_id, position_sec, created_date, modified_date, status)
@@ -70,5 +74,52 @@ public interface PlaybackRepository extends JpaRepository<Playback, Long>, Playb
         void upsertPlayback(
                 @Param("memberId") Long memberId, 
                 @Param("contentsId") Long contentsId, 
+                @Param("positionSec") int positionSec);
+
+        @Modifying
+        @Query(value = """
+                UPDATE playback
+                SET position_sec = :positionSec,
+                    modified_date = NOW()
+                WHERE member_id = :memberId
+                  AND contents_id = :contentsId
+                  AND status = 'ACTIVE'
+                """, nativeQuery = true)
+        int updatePlayback(
+                @Param("memberId") Long memberId,
+                @Param("contentsId") Long contentsId,
+                @Param("positionSec") int positionSec);
+
+        @Modifying
+        @Query(value = """
+                INSERT IGNORE INTO playback (member_id, contents_id, position_sec, event_time, created_date, modified_date, status)
+                VALUES (:memberId, :contentsId, 0, NOW(), NOW(), NOW(), 'ACTIVE')
+                """, nativeQuery = true)
+        int insertIgnorePlayback(
+                @Param("memberId") Long memberId,
+                @Param("contentsId") Long contentsId);
+
+        /**
+         * @deprecated Playback start/update 분리 구조에서는 init 시 insertIgnorePlayback(Long, Long),
+         *             progress 갱신 시 updatePlayback(Long, Long, int)를 사용한다.
+         */
+        @Deprecated
+        @Modifying
+        @Query(value = """
+                INSERT INTO playback (member_id, contents_id, position_sec, created_date, modified_date, status)
+                SELECT :memberId, c.id, :positionSec, NOW(), NOW(), 'ACTIVE'
+                FROM contents c
+                JOIN media m ON m.id = c.media_id
+                WHERE m.id = :mediaId
+                  AND c.status = 'ACTIVE'
+                  AND m.public_status = 'PUBLIC'
+                  AND m.media_status = 'COMPLETED'
+                ON DUPLICATE KEY UPDATE
+                    position_sec = :positionSec,
+                    modified_date = NOW()
+                """, nativeQuery = true)
+        int upsertPlaybackByMediaId(
+                @Param("memberId") Long memberId,
+                @Param("mediaId") Long mediaId,
                 @Param("positionSec") int positionSec);
 }

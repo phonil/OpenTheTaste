@@ -1,43 +1,53 @@
 package com.ott.api_user.playback.service;
 
-import java.util.Optional;
-
-import org.springframework.dao.DataIntegrityViolationException;
+import com.ott.api_user.playback.buffer.PlaybackCommandQueue;
+import com.ott.api_user.playback.dto.request.PlaybackInitRequest;
+import com.ott.api_user.playback.dto.request.PlaybackUpdateRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ott.api_user.playback.buffer.PlaybackMetrics;
+import com.ott.api_user.playback.cache.PlayableMediaCacheValue;
 import com.ott.common.web.exception.BusinessException;
 import com.ott.common.web.exception.ErrorCode;
-import com.ott.domain.common.PublicStatus;
-import com.ott.domain.common.Status;
-import com.ott.domain.contents.domain.Contents;
 import com.ott.domain.contents.repository.ContentsRepository;
-import com.ott.domain.member.domain.Member;
-import com.ott.domain.member.repository.MemberRepository;
-import com.ott.domain.playback.domain.Playback;
 import com.ott.domain.playback.repository.PlaybackRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class PlaybackService {
+
     private final PlaybackRepository playbackRepository;
+    private final PlaybackValidationCacheService playbackValidationCacheService;
     private final ContentsRepository contentsRepository;
+    private final PlaybackCommandQueue playbackCommandQueue;
+    private final PlaybackMetrics playbackMetrics;
 
-    public void upsertPlayback(Long memberId, Long mediaId, Integer positionSec){
+    @Transactional
+    public void initPlayback(Long memberId, PlaybackInitRequest playbackInitRequest) {
+        Long contentsId = contentsRepository.findPlayableContentsIdByMediaId(playbackInitRequest.getMediaId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CONTENTS_NOT_FOUND));
 
-        if(positionSec == null || positionSec < 0){
-            positionSec =0;
+        playbackRepository.insertIgnorePlayback(memberId, contentsId);
+    }
+
+    public void updatePlayback(Long memberId, PlaybackUpdateRequest playbackUpdateRequest) {
+        PlayableMediaCacheValue playableMedia = playbackValidationCacheService.getPlayableMedia(playbackUpdateRequest.getMediaId());
+        if (!playableMedia.playable()) {
+            throw new BusinessException(ErrorCode.CONTENTS_NOT_FOUND);
         }
 
-        Contents contents = contentsRepository.findByMediaIdAndStatusAndMedia_PublicStatus(mediaId, Status.ACTIVE, PublicStatus.PUBLIC)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CONTENTS_NOT_FOUND));
-        
-        //기존의 JPA 안에서의 if-else 로 조회 -> 업데이트 -> 없으면 예외처리 -> 다시 조회 -> 업데이트 
-        // 위 과정 대신, 네이티브 쿼리를 통해 DB 안에서의 UP-SERT 로 수정.
-        playbackRepository.upsertPlayback(memberId, contents.getId(), positionSec);
-        
+        boolean offered = playbackCommandQueue.offer(
+            memberId, playableMedia.contentsId(), playbackUpdateRequest.getPositionSec());
+
+        if (!offered) {
+            playbackMetrics.incrementQueueFullDrop();
+            log.warn("Playback queue full, dropping command: memberId={}, contentsId={}",
+                memberId, playableMedia.contentsId());
+        }
     }
 }

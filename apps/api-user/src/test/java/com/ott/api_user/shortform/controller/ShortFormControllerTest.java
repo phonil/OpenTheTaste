@@ -99,7 +99,7 @@ class ShortFormControllerTest {
         mockMvc.perform(post("/short-forms/events")
                         .principal(new UsernamePasswordAuthenticationToken(memberId, "x"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"shortFormId\":7}"))
+                        .content("{\"mediaId\":7}"))
                 .andExpect(status().isNoContent());
 
         verify(clickEventService).saveClickEvent(eq(memberId), eq(7L), eq(com.ott.domain.click_event.domain.ClickType.SHORT_CLICK));
@@ -112,7 +112,7 @@ class ShortFormControllerTest {
         mockMvc.perform(post("/short-forms/cta")
                         .principal(new UsernamePasswordAuthenticationToken(memberId, "x"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"shortFormId\":13}"))
+                        .content("{\"mediaId\":13}"))
                 .andExpect(status().isNoContent());
 
         verify(clickEventService).saveClickEvent(memberId, 13L, com.ott.domain.click_event.domain.ClickType.CTA_CLICK);
