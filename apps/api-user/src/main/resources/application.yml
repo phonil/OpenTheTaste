@@ -39,6 +39,11 @@ spring:
             token-uri: https://kauth.kakao.com/oauth/token # 받은 인가코드를 토큰으로 교환
             user-info-uri: https://kapi.kakao.com/v2/user/me # 유저 정보 가져오는 API
             user-name-attribute: id
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   # flyway 설정
   flyway:
     enabled: true

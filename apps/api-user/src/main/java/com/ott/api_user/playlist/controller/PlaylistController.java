@@ -11,6 +11,7 @@ import com.ott.api_user.playlist.dto.request.PlaylistCondition;
 import com.ott.api_user.playlist.dto.response.PlaylistResponse;
 import com.ott.api_user.playlist.dto.response.TopTagPlaylistResponse;
 import com.ott.api_user.playlist.service.PlaylistStrategyService;
+import com.ott.api_user.playlist.service.TrendingCacheService;
 import com.ott.common.web.response.SliceResponse;
 import com.ott.common.web.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class PlaylistController implements PlayListAPI {
 
     private final PlaylistStrategyService playlistStrategytService;
+    private final TrendingCacheService trendingCacheService;
 
     // 1. 종합 추천
     @Override
@@ -89,11 +91,8 @@ public class PlaylistController implements PlayListAPI {
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @AuthenticationPrincipal Long memberId) {
 
-        PlaylistCondition condition = new PlaylistCondition();
-        condition.setContentSource(ContentSource.TRENDING);
-        condition.setExcludeMediaId(excludeMediaId);
-
-        return execute(condition, page, size, memberId);
+        return ResponseEntity.ok(SuccessResponse.of(
+                trendingCacheService.getTrending(page, size)));
     }
 
 
