@@ -113,7 +113,7 @@ sequenceDiagram
     Editor->>Admin: 업로드 완료 신호 (eTag 목록 전송)
     Admin->>S3: CompleteMultipartUpload
     Admin->>MQ: TranscodeMessage 발행 (transcode.exchange)
-    MQ-->>Worker: 메시지 폴링
+    MQ-->>Worker: 메시지 소비
     Worker->>Worker: FFmpeg 트랜스코딩 (360p / 720p / 1080p)
     Worker->>S3: HLS 결과물 업로드 (master.m3u8 + segments)
     Worker->>Admin: DB 상태 업데이트 (COMPLETED)
